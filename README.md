@@ -1,4 +1,3 @@
-````markdown
 # 🔐 go-passman — A Secure CLI Password Manager in Go
 
 [![Go Version](https://img.shields.io/badge/go-1.18+-brightgreen)](https://golang.org)
