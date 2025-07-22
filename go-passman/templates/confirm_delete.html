@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Deletion - Go Passman</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .alert-danger {
+            background-color: #f8d7da; /* Light red background */
+            border-color: #f5c2c7;
+            color: #842029;
+        }
+    </style>    
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h2 class="mb-4 text-center text-danger">Confirm Deletion</h2>
+
+        {{if .Error}}
+            <div class="alert alert-danger" role="alert">
+                {{.Error}}
+            </div>
+        {{end}}
+        {{if .Message}}
+            <div class="alert alert-info" role="alert">
+                {{.Message}}
+            </div>
+        {{end}}
+
+        <div class="alert alert-danger fade show" role="alert">
+            <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Warning!</h4>
+            <p>You are about to delete the following credential. This action cannot be undone.</p>
+            <hr>
+            <dl class="row">
+                <dt class="col-sm-3">Site:</dt>
+                <dd class="col-sm-9 fw-bold">{{.Credential.Site}}</dd>
+
+                <dt class="col-sm-3">Username:</dt>
+                <dd class="col-sm-9">{{.Credential.Username}}</dd>
+            </dl>
+            <p class="mb-0">Are you absolutely sure you want to proceed?</p>
+        </div>
+
+        <form method="POST" action="/delete">
+            <input type="hidden" name="site" value="{{.Credential.Site}}">
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                <button type="submit" class="btn btn-danger btn-lg px-4">
+                    <i class="bi bi-trash-fill"></i> Confirm Delete
+                </button>
+                <a href="/dashboard" class="btn btn-secondary btn-lg px-4">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigF/g/6P2S9+yRzVFM" crossorigin="anonymous"></script>
+</body>
+</html>

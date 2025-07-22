@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Credential represents a user's credential with a username and password.
@@ -26,9 +27,9 @@ func ValidateCredential(c Credential) error {
 }
 
 func FindCredential(creds []Credential, site string) *Credential {
-	for _, cred := range creds {
-		if cred.Site == site {
-			return &cred
+	for i, cred := range creds {
+		if strings.EqualFold(cred.Site, site) {
+			return &creds[i]
 		}
 	}
 	return nil

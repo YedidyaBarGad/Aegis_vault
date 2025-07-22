@@ -1,10 +1,11 @@
 module github.com/YedidyaBarGad/go-passman
 
-go 1.24.5
-
-require golang.org/x/crypto v0.40.0
+go 1.24
 
 require (
-	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/term v0.33.0 // direct
+	github.com/gorilla/mux v1.8.1
+	golang.org/x/crypto v0.40.0
+	golang.org/x/term v0.33.0
 )
+
+require golang.org/x/sys v0.34.0 // indirect

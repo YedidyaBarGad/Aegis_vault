@@ -1,8 +1,10 @@
 package util
 
 import (
+	"bufio"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
@@ -36,20 +38,21 @@ func GeneratePassword(length int) string {
 // PrompInput prompts the user for input and returns the input as a string.
 func PromptInput(prompt string) string {
 	fmt.Print(prompt)
-	var input string
-	_, err := fmt.Scanln(&input)
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
 	if err != nil {
 		fmt.Println("Error reading input:", err)
 		return ""
 	}
-	return input
+	return strings.TrimSpace(input)
 }
 
 // PromptYesNo prompts the user for a yes or no answer and returns true for yes and false for no.
 func PromptYesNo(prompt string) bool {
 	fmt.Print(prompt + " (y/n): ")
 	var input string
-	_, err := fmt.Scanln(&input)
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
 	if err != nil {
 		fmt.Println("Error reading input:", err)
 		return false

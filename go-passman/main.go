@@ -1,3 +1,6 @@
+//go:build cli
+// +build cli
+
 package main
 
 import (
@@ -21,11 +24,11 @@ func handleAdd(creds []models.Credential) ([]models.Credential, error) {
 	if site == "" || username == "" {
 		return creds, fmt.Errorf("site and username cannot be empty")
 	}
+	fmt.Println("Enter password (leave blank to generate a random one): ")
 	password, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return creds, fmt.Errorf("error reading password: %v", err)
 	}
-	fmt.Println()
 	passwordStr := string(password)
 	if passwordStr == "" {
 		passwordStr = util.GeneratePassword(12)
@@ -151,6 +154,8 @@ func main() {
 		creds, err = handleDelete(creds)
 	case "update":
 		creds, err = handleUpdate(creds)
+	case "list":
+		util.PrintCredentials(creds)
 	default:
 		fmt.Println("Unknown command:", command)
 		return
