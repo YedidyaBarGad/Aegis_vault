@@ -49,26 +49,6 @@ go build -o passman .
 
 ---
 
-## 🧰 Example Workflow
-
-```bash
-./passman init      # Create your master password and empty vault
-./passman add       # Add a new login
-./passman get       # Fetch stored login credentials
-./passman update    # Modify a site's credentials
-./passman delete    # Remove a site's credentials
-```
-
----
-
-## 🔐 How It Works
-
-* **Encryption**: Uses `scrypt` for key derivation, `AES-GCM` for authenticated encryption.
-* **Storage**: Encrypted data saved to `vault.json` with salt and nonce prepended.
-* **No Cloud**: All data lives locally, offline, and securely.
-
----
-
 ## 🧩 Project Structure
 
 ```
