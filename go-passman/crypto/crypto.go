@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	"golang.org/x/crypto/scrypt"
@@ -46,46 +47,47 @@ func DeriveKey(password, salt []byte) ([]byte, error) {
 
 // Encrypt encrypts the given data using the provided password.
 // It generates a random salt and nonce, derives a key from the password, and returns the encrypted data as a base64 string.
-func Encrypt(data, password []byte) (string, error) {
+func Encrypt(data, password []byte) ([]byte, error) {
 	// Generate a random salt for key derivation
 	salt, err := GenerateRandomBytes(16)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate salt: %v", err)
+		return nil, fmt.Errorf("failed to generate salt: %v", err)
 	}
 	// Generate a random nonce for encryption
 	nonce, err := GenerateRandomBytes(12)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate nonce: %v", err)
+		return nil, fmt.Errorf("failed to generate nonce: %v", err)
 	}
 
 	// Derive a key from the password and salt
 	key, err := DeriveKey(password, salt)
 	if err != nil {
-		return "", fmt.Errorf("failed to derive key: %v", err)
+		return nil, fmt.Errorf("failed to derive key: %v", err)
 	}
 
 	// Create AES cipher block
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", fmt.Errorf("failed to create cipher: %v", err)
+		return nil, fmt.Errorf("failed to create cipher: %v", err)
 	}
 
 	// Use GCM mode
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", fmt.Errorf("failed to create GCM: %v", err)
+		return nil, fmt.Errorf("failed to create GCM: %v", err)
 	}
 
 	// Encrypt the data using AES-GCM
 	ciphertext := aesGCM.Seal(nil, nonce, data, nil)
 	if ciphertext == nil {
-		return "", fmt.Errorf("encryption failed")
+		return nil, fmt.Errorf("encryption failed")
 	}
 
 	// Seal the data with the derived key and salt and nonce and return the encrypted data as a base64 string
 	sealedData := append(salt, nonce...)
 	sealedData = append(sealedData, ciphertext...)
-	encryptedData := base64.StdEncoding.EncodeToString(sealedData)
+	encryptedData := make([]byte, base64.StdEncoding.EncodedLen(len(sealedData)))
+	base64.StdEncoding.Encode(encryptedData, sealedData)
 	return encryptedData, nil
 }
 
@@ -131,4 +133,12 @@ func Decrypt(encryptedData string, password []byte) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func GetKeyBase64() ([]byte, error) {
+	keyBase64 := os.Getenv("USERS_FILE_ENCRYPTION_KEY")
+	if keyBase64 == "" {
+		return nil, fmt.Errorf("FATAL: Environment variable USERS_FILE_ENCRYPTION_KEY not set")
+	}
+	return []byte(keyBase64), nil
 }

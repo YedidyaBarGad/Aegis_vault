@@ -1,4 +1,3 @@
-// go:build web
 //go:build web
 // +build web
 
@@ -14,62 +13,103 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/YedidyaBarGad/go-passman/auth"
 	"github.com/YedidyaBarGad/go-passman/models"
 	"github.com/YedidyaBarGad/go-passman/storage"
 	"github.com/YedidyaBarGad/go-passman/util"
 	"github.com/gorilla/mux"
 )
 
-const vaultPath = "vault.json"
+// usersDir is the directory where individual user vaults and the users.json file will be stored
+const usersDir = "users_data"
+const userVaultPrefix = "vault_"
+const userVaultSuffix = ".json"
+const allUsersPath = "users_data/users.json"
 
 var (
-	creds     []models.Credential
-	vaultPW   []byte
 	templates *template.Template
+	allUsers  *models.Users // Global variable to hold all registered users
 )
 
-type PageData struct {
-	Credentials []models.Credential
-	Credential  *models.Credential
-	Error       string
-	Message     string
+// Session represents a user's active session
+type Session struct {
+	Username  string
+	VaultPW   []byte              // Master password for the current session (decrypted vault key)
+	UserCreds []models.Credential // Loaded credentials for the current user
+	VaultPath string              // Path to the current user's vault file
 }
 
-// init initializes the templates and sets up the vault path.
-// It parses the HTML templates from the templates directory.
+// PageData is the data structure used to pass data to templates
+type PageData struct {
+	Error       string
+	Message     string
+	Credentials []models.Credential // List of credentials for the dashboard
+	Credential  *models.Credential  // For add/update forms
+}
+
+// In-memory map to store active sessions (for simplicity; use a proper session store in production)
+var activeSessions = make(map[string]*Session) // map[sessionID]Session
+
 func init() {
+
 	templates = template.Must(template.ParseFiles(
-		filepath.Join("templates", "init.html"),
+		filepath.Join("templates", "init.html"), // Still here, but less used
 		filepath.Join("templates", "login.html"),
+		filepath.Join("templates", "register.html"),
 		filepath.Join("templates", "dashboard.html"),
 		filepath.Join("templates", "add.html"),
 		filepath.Join("templates", "update.html"),
 		filepath.Join("templates", "confirm_delete.html"),
 	))
 	log.Println("Templates loaded.")
-}
 
-// loadVault loads the vault from the specified path using the provided password.
-// It returns an error if the vault cannot be loaded.
-func loadVault() error {
+	// Create users data directory if it doesn't exist
+	if err := os.MkdirAll(usersDir, 0755); err != nil {
+		log.Fatalf("Failed to create users data directory: %v", err)
+	}
+
+	// Load all users from users.json on startup
 	var err error
-	creds, err = storage.LoadVault(vaultPath, vaultPW)
-	return err
+	loadedUsers, err := models.LoadUsers(allUsersPath) // Assign to local var first
+	if err != nil {
+		log.Printf("Error loading users from %s: %v", allUsersPath, err)
+	}
+	allUsers = loadedUsers // Then assign address to global pointer
 }
 
-// saveVault saves the current credentials to the vault file.
-// It returns an error if the save operation fails.
-func saveVault() error {
-	return storage.SaveVault(vaultPath, creds, vaultPW)
+// getUserSession retrieves the current user's session from the request context (or by cookie)
+func getUserSession(r *http.Request) *Session {
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		return nil // No session cookie
+	}
+	sessionID := cookie.Value
+	return activeSessions[sessionID]
+}
+
+// createSession creates a new session for a user
+func createSession(username string, vaultPW []byte, userVaultPath string) (*Session, string) {
+	sessionID := util.GeneratePassword(32) // Generate a cryptographically random session ID
+	session := &Session{
+		Username:  username,
+		VaultPW:   vaultPW,
+		VaultPath: userVaultPath,
+	}
+	activeSessions[sessionID] = session
+	return session, sessionID
+}
+
+// removeSession removes a session
+func removeSession(sessionID string) {
+	delete(activeSessions, sessionID)
 }
 
 // renderTemplate renders the specified template with the provided data.
-// It handles errors by logging them and returning an HTTP error response.
 func renderTemplate(w http.ResponseWriter, tmplName string, data interface{}) {
 	err := templates.ExecuteTemplate(w, tmplName+".html", data)
 	if err != nil {
-		log.Printf("Template execution error for %s: %v\n", tmplName, err)
 		http.Error(w, "Template render error: "+err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -77,65 +117,161 @@ func renderTemplate(w http.ResponseWriter, tmplName string, data interface{}) {
 // isAuthenticated is a middleware that checks if the user is authenticated.
 func isAuthenticated(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if len(vaultPW) == 0 && r.URL.Path != "/login" && r.URL.Path != "/init" {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+		session := getUserSession(r)
+		if session == nil {
+			// Invalidate the cookie if it exists but points to no session
+			cookie, err := r.Cookie("session_id")
+			if err == nil {
+				removeSession(cookie.Value)
+				http.SetCookie(w, &http.Cookie{
+					Name:     "session_id",
+					Value:    "",
+					Path:     "/",
+					MaxAge:   -1,
+					HttpOnly: true,
+					Secure:   false, // Set to true in production
+					SameSite: http.SameSiteLaxMode,
+				})
+			}
+			http.Redirect(w, r, "/login?error="+url.QueryEscape("Please log in to access this page."), http.StatusSeeOther)
 			return
 		}
-		if len(vaultPW) > 0 && len(creds) == 0 {
-			if err := loadVault(); err != nil {
-				log.Printf("Failed to load vault in middleware for path %s: %v", r.URL.Path, err)
-				vaultPW = nil
-				http.Redirect(w, r, "/login?error="+url.QueryEscape("Vault load error. Please re-login."), http.StatusSeeOther)
+
+		// If credentials are not loaded for this session, try to load them
+		if session.UserCreds == nil {
+			loadedCreds, err := storage.LoadVault(session.VaultPath, session.VaultPW)
+			if err != nil {
+				log.Printf("Failed to load vault for user %s in middleware for path %s: %v", session.Username, r.URL.Path, err)
+				// Critical error: vault couldn't be loaded, likely wrong password or corrupted. Force re-login.
+				cookie, _ := r.Cookie("session_id") // We know it exists
+				removeSession(cookie.Value)
+				http.SetCookie(w, &http.Cookie{ // Expire the invalid cookie
+					Name:     "session_id",
+					Value:    "",
+					Path:     "/",
+					MaxAge:   -1,
+					HttpOnly: true,
+					Secure:   false, // Set to true in production
+					SameSite: http.SameSiteLaxMode,
+				})
+				http.Redirect(w, r, "/login?error="+url.QueryEscape("Vault load error. Please re-login. Your vault might be corrupted or password changed."), http.StatusSeeOther)
 				return
 			}
+			session.UserCreds = loadedCreds
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-// initHandler initializes the vault if it doesn't exist.
-// It prompts the user for a master password and creates an empty vault.
-func initHandler(w http.ResponseWriter, r *http.Request) {
-	if _, err := os.Stat(vaultPath); err == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+// rootHandler redirects based on whether any users are registered
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	if allUsers.Number == 0 { // Check the Number field of the Users struct
+		http.Redirect(w, r, "/register", http.StatusSeeOther) // New users register first
 		return
 	}
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
 
+// registerHandler handles new user registration.
+func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		r.ParseForm()
-		pw := r.FormValue("password")
-		if pw == "" {
-			generatedPw := util.GeneratePassword(16)
-			pw = generatedPw
-			log.Printf("Vault initialized with generated password: %s\n", generatedPw)
-		}
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		confirmPassword := r.FormValue("confirm_password")
 
-		vaultPW = []byte(pw)
-		creds = []models.Credential{}
-		if err := saveVault(); err != nil {
-			renderTemplate(w, "init", PageData{Error: "Vault initialization failed: " + err.Error()})
+		if username == "" || password == "" || confirmPassword == "" {
+			renderTemplate(w, "register", PageData{Error: "All fields are required."})
 			return
 		}
-		http.Redirect(w, r, "/login?message="+url.QueryEscape("Vault initialized. Please log in."), http.StatusSeeOther)
+
+		if password != confirmPassword {
+			renderTemplate(w, "register", PageData{Error: "Passwords do not match."})
+			return
+		}
+
+		// Enforce password strength
+		if !util.PasswordStrength(password) {
+			renderTemplate(w, "register", PageData{Error: "Password must be at least 8 characters long and include uppercase, lowercase, a digit, and a special character."})
+			return
+		}
+
+		if user, err := models.FindUser(username, allUsers); user != nil || err != nil { // Call method on global allUsers
+			renderTemplate(w, "register", PageData{Error: "Username already exists."})
+			return
+		}
+
+		hashedPassword, err := auth.HashPassword(password)
+		if err != nil {
+			log.Printf("Error hashing password during registration: %v", err)
+			renderTemplate(w, "register", PageData{Error: "Error processing password."})
+			return
+		}
+
+		userVaultFileName := fmt.Sprintf("%s%s%s", userVaultPrefix, username, userVaultSuffix)
+		userVaultPath := filepath.Join(usersDir, userVaultFileName)
+
+		// Create an empty vault file for the new user, encrypted with their master password
+		if err := storage.SaveVault(userVaultPath, []models.Credential{}, []byte(password)); err != nil {
+			log.Printf("Error initializing vault for new user %s: %v", username, err)
+			renderTemplate(w, "register", PageData{Error: "Failed to initialize user vault. Please try again."})
+			return
+		}
+
+		// Add the new user to the allUsers list and save it
+		if err := models.AddUser(username, hashedPassword, userVaultFileName, allUsersPath, allUsers); err != nil {
+			log.Printf("Error saving new user %s: %v", username, err)
+			renderTemplate(w, "register", PageData{Error: "Failed to save user data."})
+			return
+		}
+		log.Printf("New user '%s' registered and vault initialized at '%s.", username, allUsersPath)
+		http.Redirect(w, r, "/login?message="+url.QueryEscape("Registration successful. Please log in."), http.StatusSeeOther)
 		return
 	}
-	renderTemplate(w, "init", nil)
+	renderTemplate(w, "register", nil)
 }
 
 // loginHandler handles the login process.
-// It prompts the user for the master password and loads the vault.
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		r.ParseForm()
-		vaultPW = []byte(r.FormValue("password"))
-		if err := loadVault(); err != nil {
-			log.Printf("Login failed: %v", err)
-			renderTemplate(w, "login", PageData{Error: "Invalid password or corrupted vault."})
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+
+		user, err := models.FindUser(username, allUsers) // Use the method on the allUsers pointer
+		log.Printf("Login attempt for user: %s", username)
+		if user == nil || !auth.AuthenticateUser(username, password, allUsers) {
+			log.Printf("Login failed for user %s: %v", username, err)
+			renderTemplate(w, "login", PageData{Error: "Invalid username or password."})
 			return
 		}
+
+		userVaultPath := filepath.Join(usersDir, user.VaultFileName)
+		// Attempt to load and decrypt the user's vault to verify master password and load creds
+		_, errLoad := storage.LoadVault(userVaultPath, []byte(password))
+		if errLoad != nil {
+			log.Printf("Failed to load/decrypt vault for user %s during login: %v", username, errLoad)
+			renderTemplate(w, "login", PageData{Error: "Invalid password or corrupted vault. Please try again."})
+			return
+		}
+
+		// Create and set session
+		_, sessionID := createSession(username, []byte(password), userVaultPath)
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_id",
+			Value:    sessionID,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+			SameSite: http.SameSiteLaxMode,
+			Expires:  time.Now().Add(24 * time.Hour), // Session expires in 24 hours
+		})
+
+		log.Printf("User %s logged in successfully.", username)
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
+
 	data := PageData{}
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		data.Error = errMsg
@@ -146,10 +282,33 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "login", data)
 }
 
-// dashboardHandler renders the dashboard with the list of credentials.
-// It also handles any error or message passed via URL query parameters.
+// logoutHandler clears the session and redirects to login.
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err == nil {
+		removeSession(cookie.Value)
+	}
+
+	// Expire the session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1, // Immediately expire
+		HttpOnly: true,
+		// Secure:   true, // Set to true in production
+		Secure:   false, // For local development (HTTP)
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	log.Printf("User logged out.")
+	http.Redirect(w, r, "/login?message="+url.QueryEscape("Logged out successfully."), http.StatusSeeOther)
+}
+
+// dashboardHandler renders the dashboard with the list of credentials for the current user.
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-	data := PageData{Credentials: creds}
+	session := getUserSession(r)
+	data := PageData{Credentials: session.UserCreds}
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		data.Error = errMsg
 	}
@@ -159,9 +318,9 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "dashboard", data)
 }
 
-// addHandler handles the addition of new credentials.
-// It expects a POST request with the site, username, and password in the form data.
+// addHandler handles the addition of new credentials for the current user.
 func addHandler(w http.ResponseWriter, r *http.Request) {
+	session := getUserSession(r)
 	if r.Method == http.MethodPost {
 		r.ParseForm()
 		site := r.FormValue("site")
@@ -177,7 +336,7 @@ func addHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		for _, existingCred := range creds {
+		for _, existingCred := range session.UserCreds {
 			if strings.EqualFold(existingCred.Site, site) {
 				data := PageData{
 					Credential: &models.Credential{Site: site, Username: username},
@@ -188,40 +347,33 @@ func addHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Removed the password strength check here.
-		// Now, if password is empty, it generates one. If it's not empty, it uses what's provided.
 		if password == "" {
-			password = util.GeneratePassword(16)
-			log.Printf("Generated password for %s: %s", site, password)
+			password = util.GeneratePassword(16) // Use util.GeneratePassword for actual password generation
 		}
-		// No 'else' block for strength check anymore
 
 		newCred := models.Credential{
 			Site:     site,
 			Username: username,
-			Password: password, // This will be the user's input or the generated password
+			Password: password, // Store as plaintext for now, encryption happens at saveVault
 		}
 
-		creds = append(creds, newCred)
+		session.UserCreds = append(session.UserCreds, newCred)
 
-		if err := saveVault(); err != nil {
-			log.Printf("Error saving vault after add: %v", err)
+		if err := storage.SaveVault(session.VaultPath, session.UserCreds, session.VaultPW); err != nil {
+			log.Printf("Error saving vault after add for user %s: %v", session.Username, err)
 			renderTemplate(w, "add", PageData{Credential: &newCred, Error: "Failed to save vault."})
 			return
 		}
 
-		// Success! Now redirect to dashboard.
 		http.Redirect(w, r, "/dashboard?message="+url.QueryEscape(fmt.Sprintf("Credential for '%s' added successfully!", site)), http.StatusSeeOther)
-		return // Ensure return after redirect
+		return
 	}
-
-	// For GET requests, render the empty add form
 	renderTemplate(w, "add", nil)
 }
 
 // confirmDeleteHandler renders a confirmation page for deleting a credential.
-// It expects the site to delete as a URL parameter.
 func confirmDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	session := getUserSession(r)
 	vars := mux.Vars(r)
 	siteToConfirm := vars["site"]
 	if siteToConfirm == "" {
@@ -229,7 +381,7 @@ func confirmDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cred := models.FindCredential(creds, siteToConfirm)
+	cred := models.FindCredential(session.UserCreds, siteToConfirm)
 	if cred == nil {
 		http.Error(w, "Credential not found for confirmation.", http.StatusNotFound)
 		return
@@ -239,9 +391,9 @@ func confirmDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "confirm_delete", data)
 }
 
-// deleteHandler handles the deletion of credentials.
-// It expects a POST request with the site to delete in the form data.
+// deleteHandler handles the deletion of credentials for the current user.
 func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	session := getUserSession(r)
 	if r.Method != http.MethodPost {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
@@ -255,14 +407,14 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var deleted bool
-	creds, deleted = models.DeleteCredential(creds, siteToDelete)
+	session.UserCreds, deleted = models.DeleteCredential(session.UserCreds, siteToDelete)
 	if !deleted {
 		http.Redirect(w, r, "/dashboard?error="+url.QueryEscape(fmt.Sprintf("Credential for '%s' not found or already deleted.", siteToDelete)), http.StatusSeeOther)
 		return
 	}
 
-	if err := saveVault(); err != nil {
-		log.Printf("Error saving vault after deletion: %v", err)
+	if err := storage.SaveVault(session.VaultPath, session.UserCreds, session.VaultPW); err != nil {
+		log.Printf("Error saving vault after deletion for user %s: %v", session.Username, err)
 		http.Redirect(w, r, "/dashboard?error="+url.QueryEscape("Failed to save vault after deletion."), http.StatusSeeOther)
 		return
 	}
@@ -270,10 +422,9 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/dashboard?message="+url.QueryEscape(fmt.Sprintf("Credential for '%s' deleted successfully.", siteToDelete)), http.StatusSeeOther)
 }
 
-// updateHandler handles the update of existing credentials.
-// It allows the user to change the site, username, and password of an existing credential.
-// It also checks for conflicts with existing credentials.
+// updateHandler handles the update of existing credentials for the current user.
 func updateHandler(w http.ResponseWriter, r *http.Request) {
+	session := getUserSession(r)
 	vars := mux.Vars(r)
 	oldSite := vars["site"]
 
@@ -289,13 +440,13 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		newPassword := r.FormValue("password")
 
 		if newSite == "" || newUsername == "" {
-			credToDisplay := models.FindCredential(creds, siteToFind)
+			credToDisplay := models.FindCredential(session.UserCreds, siteToFind)
 			renderTemplate(w, "update", PageData{Credential: credToDisplay, Error: "Site and Username cannot be empty."})
 			return
 		}
 
 		foundIndex := -1
-		for i, cred := range creds {
+		for i, cred := range session.UserCreds {
 			if strings.EqualFold(cred.Site, siteToFind) {
 				foundIndex = i
 				break
@@ -307,33 +458,31 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		passwordToSave := creds[foundIndex].Password
-		if newPassword == "" {
-			// If no new password is provided, generate a new one
-			newPassword = util.GeneratePassword(16)
-			// add popup message to inform the user in the UI
-
+		passwordToSave := session.UserCreds[foundIndex].Password // Keep existing password if not provided
+		if newPassword != "" {
+			passwordToSave = newPassword
 		}
-		passwordToSave = newPassword
 
 		if strings.EqualFold(newSite, siteToFind) {
-			creds[foundIndex].Username = newUsername
-			creds[foundIndex].Password = passwordToSave
+			session.UserCreds[foundIndex].Username = newUsername
+			session.UserCreds[foundIndex].Password = passwordToSave
 		} else {
-			for i, cred := range creds {
+			// Check for conflicts with other credentials *for the current user*
+			for i, cred := range session.UserCreds {
 				if i != foundIndex && strings.EqualFold(cred.Site, newSite) {
-					credToDisplay := models.FindCredential(creds, siteToFind)
+					credToDisplay := models.FindCredential(session.UserCreds, siteToFind)
 					renderTemplate(w, "update", PageData{Credential: credToDisplay, Error: fmt.Sprintf("New site name '%s' conflicts with another existing credential.", newSite)})
 					return
 				}
 			}
-			creds[foundIndex].Site = newSite
-			creds[foundIndex].Username = newUsername
-			creds[foundIndex].Password = passwordToSave
+			session.UserCreds[foundIndex].Site = newSite
+			session.UserCreds[foundIndex].Username = newUsername
+			session.UserCreds[foundIndex].Password = passwordToSave
 		}
 
-		if err := saveVault(); err != nil {
-			renderTemplate(w, "update", PageData{Credential: &creds[foundIndex], Error: "Failed to save vault after update."})
+		if err := storage.SaveVault(session.VaultPath, session.UserCreds, session.VaultPW); err != nil {
+			log.Printf("Error saving vault after update for user %s: %v", session.Username, err)
+			renderTemplate(w, "update", PageData{Credential: &session.UserCreds[foundIndex], Error: "Failed to save vault after update."})
 			return
 		}
 		http.Redirect(w, r, "/dashboard?message="+url.QueryEscape(fmt.Sprintf("Credential for '%s' updated successfully!", newSite)), http.StatusSeeOther)
@@ -341,7 +490,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET request for update form
-	cred := models.FindCredential(creds, oldSite)
+	cred := models.FindCredential(session.UserCreds, oldSite)
 	if cred == nil {
 		http.Error(w, "Credential not found", http.StatusNotFound)
 		return
@@ -349,28 +498,23 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "update", PageData{Credential: cred})
 }
 
-// apiList returns the list of credentials in JSON format.
-// This is used for API access.
+// apiList returns the list of credentials for the current user in JSON format.
 func apiList(w http.ResponseWriter, r *http.Request) {
+	session := getUserSession(r)
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(creds); err != nil {
+	if err := json.NewEncoder(w).Encode(session.UserCreds); err != nil {
 		http.Error(w, "Failed to encode credentials", http.StatusInternalServerError)
 	}
 }
 
 func main() {
+	models.InitKey()
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if _, err := os.Stat(vaultPath); os.IsNotExist(err) {
-			http.Redirect(w, r, "/init", http.StatusSeeOther)
-			return
-		}
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-	})
-
-	router.HandleFunc("/init", initHandler)
+	router.HandleFunc("/", rootHandler)
+	router.HandleFunc("/register", registerHandler)
 	router.HandleFunc("/login", loginHandler)
+	router.HandleFunc("/logout", logoutHandler).Methods("POST") // Add logout route
 
 	authenticatedRouter := router.PathPrefix("/").Subrouter()
 	authenticatedRouter.Use(isAuthenticated)

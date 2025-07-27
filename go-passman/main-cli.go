@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"github.com/YedidyaBarGad/go-passman/auth"
@@ -16,8 +17,14 @@ import (
 	"golang.org/x/term"
 )
 
-const vaultPath = "vault.json"
+const vaultDir = "vaults_CLI"
 
+// getVaultPath returns the path to a user's vault file
+func getVaultPath(username string) string {
+	return filepath.Join(vaultDir, fmt.Sprintf("%s_vault.json", username))
+}
+
+// handleAdd prompts the user for site, username, and password, and adds a new credential
 func handleAdd(creds []models.Credential) ([]models.Credential, error) {
 	site := util.PromptInput("Enter site: ")
 	username := util.PromptInput("Enter username: ")
@@ -38,6 +45,7 @@ func handleAdd(creds []models.Credential) ([]models.Credential, error) {
 		}
 	}
 
+	// Create a new credential and validate it
 	newCred := models.Credential{Site: site, Username: username, Password: passwordStr}
 	if err := models.ValidateCredential(newCred); err != nil {
 		return creds, err
@@ -45,6 +53,7 @@ func handleAdd(creds []models.Credential) ([]models.Credential, error) {
 	return append(creds, newCred), nil
 }
 
+// handleGet retrieves and displays credentials for a given site
 func handleGet(creds []models.Credential) {
 	site := util.PromptInput("Enter site to retrieve credentials: ")
 	cred := models.FindCredential(creds, site)
@@ -55,6 +64,7 @@ func handleGet(creds []models.Credential) {
 	fmt.Printf("Credentials for %s:\nUsername: %s\nPassword: %s\n", cred.Site, cred.Username, cred.Password)
 }
 
+// handleDelete removes credentials for a given site
 func handleDelete(creds []models.Credential) ([]models.Credential, error) {
 	site := util.PromptInput("Enter site to delete credentials: ")
 	if site == "" {
@@ -69,6 +79,7 @@ func handleDelete(creds []models.Credential) ([]models.Credential, error) {
 	return creds, nil
 }
 
+// handleUpdate prompts the user for site, new username, and new password, and updates the credential
 func handleUpdate(creds []models.Credential) ([]models.Credential, error) {
 	site := util.PromptInput("Enter site to update: ")
 	cred := models.FindCredential(creds, site)
@@ -77,6 +88,7 @@ func handleUpdate(creds []models.Credential) ([]models.Credential, error) {
 	}
 	fmt.Printf("Current Username: %s\n", cred.Username)
 
+	// Prompt for new username and password
 	newUsername := util.PromptInput("Enter new username (leave blank to keep current): ")
 	if newUsername == "" {
 		newUsername = cred.Username
@@ -107,9 +119,17 @@ func handleUpdate(creds []models.Credential) ([]models.Credential, error) {
 	return creds, nil
 }
 
-func handleInit() ([]models.Credential, []byte, error) {
-	fmt.Println("Initializing vault...")
-	password, err := auth.SetMasterPassword(vaultPath, nil)
+// handleInit initializes a new vault for the user
+func handleInit(username string) ([]models.Credential, []byte, error) {
+	vaultPath := getVaultPath(username)
+
+	// Ensure the vault directory exists
+	if err := os.MkdirAll(vaultDir, 0700); err != nil {
+		return nil, nil, fmt.Errorf("failed to create vault directory: %v", err)
+	}
+
+	fmt.Printf("Initializing vault for user '%s' at %s...\n", username, vaultPath)
+	password, err := auth.SetMasterPassword(vaultPath, nil) // Set master password for this specific vault path
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to set master password: %v", err)
 	}
@@ -122,15 +142,19 @@ func handleInit() ([]models.Credential, []byte, error) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go-passman <command>")
-		fmt.Println("Commands: init, add, get, delete, update")
+	if len(os.Args) < 3 {
+		fmt.Println("Usage: go-passman <username> <command>")
+		fmt.Println("Commands: init, add, get, delete, update, list")
 		return
 	}
-	command := os.Args[1]
+
+	username := os.Args[1]
+	command := os.Args[2]
+
+	vaultPath := getVaultPath(username)
 
 	if command == "init" {
-		_, _, err := handleInit()
+		_, _, err := handleInit(username)
 		if err != nil {
 			fmt.Println("Init error:", err)
 		}
@@ -138,10 +162,11 @@ func main() {
 	}
 
 	// For all other commands, prompt for password and load vault
-	password := auth.PromptMasterPassword()
+	password := auth.PromptMasterPassword(vaultPath)
 	creds, err := storage.LoadVault(vaultPath, password)
 	if err != nil {
 		fmt.Println("Error loading vault:", err)
+		fmt.Println("Ensure the vault exists and the master password is correct.")
 		return
 	}
 

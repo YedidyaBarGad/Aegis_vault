@@ -8,12 +8,13 @@ import (
 
 	"github.com/YedidyaBarGad/go-passman/storage"
 	"github.com/YedidyaBarGad/go-passman/util"
+	"golang.org/x/crypto/bcrypt"
 
 	"golang.org/x/term"
 )
 
 // PromptMasterPassword prompts the user for a master password and returns it as a byte slice.
-func PromptMasterPassword() []byte {
+func PromptMasterPassword(path string) []byte {
 	fmt.Print("Enter master password: ")
 	// Use term.ReadPassword to read the password without echoing it to the terminal
 	password, err := term.ReadPassword(int(syscall.Stdin))
@@ -24,7 +25,7 @@ func PromptMasterPassword() []byte {
 	fmt.Println()
 
 	// Validate the password
-	if VerifyMasterPassword("vault.json", password) != nil {
+	if VerifyMasterPassword(path, password) != nil {
 		fmt.Println("Invalid master password.")
 		return nil
 	}
@@ -65,6 +66,7 @@ func VerifyMasterPassword(path string, password []byte) error {
 			return fmt.Errorf("invalid credential found: %v", err)
 		}
 	}
+	// If we reach here, the password is correct
 	return nil
 }
 
@@ -125,4 +127,31 @@ func ChangeMasterPassword(path string, oldPass, newPass []byte) error {
 	}
 
 	return nil
+}
+
+func HashPassword(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %v", err)
+	}
+	return string(hashedPassword), nil
+}
+
+// authenticateUser checks if the provided username and password match any user in the users list.
+func AuthenticateUser(username, password string, users *models.Users) bool {
+	user, err := models.FindUser(username, users)
+	if err != nil {
+		fmt.Printf("Error finding user %s: %v\n", username, err)
+		return false
+	}
+	if user == nil {
+		fmt.Printf("User %s not found.\n", username)
+		return false
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		fmt.Printf("Password mismatch for user %s: %v\n", username, err)
+		return false
+	}
+	fmt.Printf("User %s authenticated successfully.\n", username)
+	return true
 }

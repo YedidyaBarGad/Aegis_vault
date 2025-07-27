@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Register - Go Passman</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #212529;
+            --primary-color: #198754; /* Bootstrap success green */
+            --input-border: #ced4da;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode {
+            --bg-color: #1a1a1a;
+            --card-bg: #2a2a2a;
+            --text-color: #e0e0e0;
+            --primary-color: #28a745; /* Slightly adjusted green for dark mode readability */
+            --input-border: #444;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .card {
+            max-width: 450px; /* Slightly wider for better spacing */
+            width: 100%;
+            padding: 2.5rem; /* Increased padding */
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 8px 30px var(--shadow-color); /* More prominent shadow */
+            background-color: var(--card-bg);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        .card-title {
+            font-size: 2rem; /* Larger title */
+            font-weight: 700; /* Bolder */
+            color: var(--primary-color);
+            margin-bottom: 1.5rem; /* More space below title */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-title .bi {
+            font-size: 1.8rem; /* Icon size relative to title */
+            margin-right: 0.5rem;
+        }
+
+        .form-label {
+            font-weight: 600; /* Bolder labels */
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            border-color: var(--input-border);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); /* Green shadow for focus */
+        }
+
+        .btn-primary, .btn-success {
+            font-weight: 600;
+            font-size: 1.1rem; /* Slightly larger buttons */
+            padding: 0.75rem 1.5rem;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, transform 0.1s ease-out;
+        }
+
+        .btn-primary:hover, .btn-success:hover {
+            transform: translateY(-2px); /* Subtle hover effect */
+        }
+
+        .link-text {
+            color: var(--text-color);
+        }
+
+        .link-primary {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease-in-out;
+        }
+
+        .link-primary:hover {
+            text-decoration: underline;
+            color: var(--primary-color); /* Ensure hover color stays primary */
+        }
+
+        .dark-toggle {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+        }
+
+        /* Adjust alert styles for dark mode */
+        body.dark-mode .alert-danger,
+        body.dark-mode .alert-success {
+            color: #fff;
+        }
+
+        body.dark-mode .alert-danger {
+            background-color: #6a1a21; /* Darker red */
+            border-color: #8c1f28;
+        }
+
+        body.dark-mode .alert-success {
+            background-color: #1a4f21; /* Darker green */
+            border-color: #206c2a;
+        }
+
+        body.dark-mode .btn-close {
+            filter: invert(1); /* Makes the close button white in dark mode */
+        }
+    </style>
+</head>
+<body>
+    <div class="dark-toggle">
+        <button id="darkModeToggle" class="btn btn-sm btn-outline-secondary" title="Toggle Dark Mode">
+            <i class="bi bi-moon-stars-fill"></i>
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4">
+                <i class="bi bi-person-plus-fill"></i>Register New Account
+            </h2>
+
+            {{if .Error}}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{.Error}}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {{end}}
+            {{if .Message}}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{.Message}}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {{end}}
+
+            <form method="POST" action="/register" autocomplete="off">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" required autofocus placeholder="Choose a username"/>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Master Password</label>
+                    <input type="password" class="form-control" id="password" name="password" required placeholder="Create a strong master password"/>
+                </div>
+
+                <div class="mb-4">
+                    <label for="confirm_password" class="form-label">Confirm Master Password</label>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required placeholder="Re-enter your master password"/>
+                </div>
+
+                <div class="d-grid gap-2 mb-3">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-person-check-fill me-2"></i>Register
+                    </button>
+                </div>
+            </form>
+            <p class="text-center link-text">Already have an account? <a href="/login" class="link-primary">Login here</a>.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Dark Mode Toggle ---
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+
+            // Function to set dark mode
+            const setDarkMode = (isDark) => {
+                if (isDark) {
+                    document.body.classList.add('dark-mode');
+                    darkModeToggle.querySelector('i').classList.remove('bi-moon-stars-fill');
+                    darkModeToggle.querySelector('i').classList.add('bi-sun-fill');
+                    darkModeToggle.classList.remove('btn-outline-secondary');
+                    darkModeToggle.classList.add('btn-secondary');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    darkModeToggle.querySelector('i').classList.remove('bi-sun-fill');
+                    darkModeToggle.querySelector('i').classList.add('bi-moon-stars-fill');
+                    darkModeToggle.classList.remove('btn-secondary');
+                    darkModeToggle.classList.add('btn-outline-secondary');
+                    localStorage.setItem('theme', 'light');
+                }
+            };
+
+            // Initial theme setting
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme) {
+                setDarkMode(currentTheme === 'dark');
+            } else {
+                setDarkMode(prefersDarkScheme.matches); // Use system preference if no stored theme
+            }
+
+            // Listen for system theme changes
+            prefersDarkScheme.addEventListener('change', (event) => {
+                if (!localStorage.getItem('theme')) { // Only update if no explicit user preference is set
+                    setDarkMode(event.matches);
+                }
+            });
+
+            // Toggle on button click
+            darkModeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const isDarkMode = document.body.classList.contains('dark-mode');
+                setDarkMode(isDarkMode);
+            });
+        });
+    </script>
+</body>
+</html>

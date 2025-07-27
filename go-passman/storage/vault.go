@@ -31,7 +31,7 @@ func SaveVault(path string, creds []models.Credential, password []byte) error {
 	}
 	defer file.Close()
 
-	if _, err := file.WriteString(encryptedData); err != nil {
+	if _, err := file.Write(encryptedData); err != nil {
 		return fmt.Errorf("failed to write to vault file: %v", err)
 	}
 
