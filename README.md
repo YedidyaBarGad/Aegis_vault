@@ -41,8 +41,6 @@
     go build -tags web -o go-passman-web web_main.go
     ```
 
-    *(Note: You can omit the `.exe` suffix if building on Linux/macOS, as `go build` will automatically name it correctly for the target OS.)*
-
 -----
 
 ## 🛠️ Usage
@@ -78,14 +76,11 @@ Start the web server and then access it via your browser:
 | -------- | -------------------------------------------- |
 | `register`| Registers a new user account with a master password (first step for new users) |
 | `add`    | Add a new credential to your vault            |
-| `get`    | Retrieve credentials for a specific site      |
 | `delete` | Delete stored credentials                    |
 | `update` | Modify existing credentials                  |
 | `list`   | List all credentials in your vault            |
-| `chpasswd` | Change your master password                  |
 | `login`  | Logs in a user for a CLI session              |
 
-*(Note: The `init` command listed in your old README is replaced by `register` for user accounts, and vault initialization happens per user within the `auth` flow.)*
 
 -----
 
@@ -96,8 +91,6 @@ Start the web server and then access it via your browser:
   * `.passman_key`: The crucial application-wide encryption key (generated automatically on first run). **Do not commit this to Git\!**
   * `users.json`: Stores encrypted user account information.
   * `users_data/`: A directory containing individual encrypted `vault.json` files for each user.
-
-These files are automatically `.gitignore`'d in the repository to prevent accidental leakage.
 
 -----
 
