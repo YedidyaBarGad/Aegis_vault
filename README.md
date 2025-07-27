@@ -98,33 +98,29 @@ Start the web server and then access it via your browser:
 
 ```
 go-passman/
-├── main.go                # CLI entry point (handles commands like register, add, get, etc.)
-├── web_main.go            # Web server entry point (handles web routes and API)
-├── .passman_key           # Auto-generated application-wide encryption key (NOT committed)
-├── users.json             # Encrypted list of registered users
-├── users_data/            # Directory containing individual user vaults
-│   └── <username>_vault.json # Encrypted credential vault for a specific user
-├── auth/                  # User authentication, master password handling, vault key derivation
-│   └── auth.go
-├── crypto/                # AES-GCM encryption/decryption, random byte generation
+├── cli_main.go            # CLI entry point
+├── web_main.go            # Web server entry point
+├── auth/                  # Master password setup & verification
+│   └── master.go
+├── crypto/                # AES-GCM + scrypt encryption
 │   └── crypto.go
-├── models/                # Data structures for User, Credential, and related logic
-│   ├── users.go           # Logic for loading/saving users.json and app key
-│   └── vault.go           # Logic for loading/saving individual vault.json (should be credentials.go?)
-├── util/                  # CLI prompts, password generation, helper functions
-│   └── util.go            # Renamed from gen.go for broader utility functions
+├── models/                # Credential schema & validation
+│   └── credentials.go
+├── storage/               # Vault file save/load logic
+│   └── vault.go
+├── util/                  # CLI prompts & password generation
+│   └── gen.go
 ├── templates/             # HTML templates for web UI
 │   ├── add.html
 │   ├── confirm_delete.html
 │   ├── dashboard.html
 │   ├── delete.html
-│   ├── init.html          # Likely for initial user registration, or master password setup
+│   ├── init.html
 │   ├── login.html
 │   └── update.html
-├── static/                # Static assets like CSS, JS, images for web UI
-```
 
------
+```
+---
 
 ## ✅ Requirements
 
