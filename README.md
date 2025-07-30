@@ -35,7 +35,7 @@
 
     ```bash
     # Build the CLI executable (e.g., go-passman on Linux/macOS, go-passman.exe on Windows)
-    go build -tags cli -o go-passman main.go
+    go build -tags cli -o go-passman cli_main.go
 
     # Build the Web UI executable (e.g., go-passman-web on Linux/macOS, go-passman-web.exe on Windows)
     go build -tags web -o go-passman-web web_main.go
