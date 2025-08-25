@@ -38,9 +38,6 @@ COPY --from=builder /app/main .
 # These directories contain the HTML files and user vault data.
 COPY --from=builder /app/templates ./templates
 COPY --from=builder /app/users_data ./users_data
-# The `ensureEnvFileExists` function in your main.go file creates a .env file on first run.
-# We'll copy this over to make sure the key is available to the final image.
-COPY --from=builder /app/.env ./.env
 
 # Expose the port on which the application will listen.
 EXPOSE 8080
