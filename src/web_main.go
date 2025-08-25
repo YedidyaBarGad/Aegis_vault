@@ -1,5 +1,4 @@
 //go:build web
-// +build web
 
 package main
 
@@ -69,6 +68,8 @@ type Session struct {
 func init() {
 	// Load HTML templates
 	templates = template.Must(template.ParseFiles(
+		filepath.Join("templates", "entry.html"), // Add this line
+		filepath.Join("templates", "login.html"),
 		filepath.Join("templates", "login.html"),
 		filepath.Join("templates", "register.html"),
 		filepath.Join("templates", "dashboard.html"),
@@ -90,7 +91,7 @@ func init() {
 	if secretKey == "" {
 		log.Fatal("JWT_SECRET_KEY environment variable is not set.")
 	}
-	fmt.Printf("Using JWT_SECRET_KEY (length: %d)...\n", len(secretKey))
+	log.Printf("Using JWT_SECRET_KEY (length: %d)...\n", len(secretKey))
 	jwtSecretKey = []byte(os.Getenv("JWT_SECRET_KEY"))
 	if len(jwtSecretKey) == 0 {
 		log.Fatal("JWT_SECRET_KEY environment variable is not set or is empty.")
@@ -237,6 +238,11 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+// entryHandler renders the entry page for user choice
+func entryHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, "entry", nil)
 }
 
 // registerHandler handles new user registration.
@@ -687,6 +693,8 @@ func main() {
 	// Set up the router and routes
 	router := mux.NewRouter()
 
+	router.HandleFunc("/", entryHandler)      // Show entry page
+	router.HandleFunc("/entry", entryHandler) // Alternative route
 	router.HandleFunc("/", rootHandler)
 	router.HandleFunc("/register", registerHandler)
 	router.HandleFunc("/login", loginHandler)
