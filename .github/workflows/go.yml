@@ -23,6 +23,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: .src/Dockerfile
+          file: src/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/aegis-vault:v1.0
