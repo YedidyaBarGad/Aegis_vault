@@ -1,10 +1,10 @@
-# 🔐 Aegis_vault — Secure CLI & Web Password Manager in Go
+# 🔐 Aegis vault — Secure CLI & Web Password Manager in Go
 
 [![Go Version](https://img.shields.io/badge/go-1.24+-brightgreen)](https://golang.org)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-blue)]()
 
-**Aegis_vault** is a lightweight, secure, and user-friendly password manager written in [Go](https://golang.org/). It allows you to store, retrieve, update, and delete login credentials encrypted with a master password using modern cryptography. It provides both a command-line interface (CLI) for quick actions and a web interface for visual management.
+**Aegis vault** is a lightweight, secure, and user-friendly password manager written in [Go](https://golang.org/). It allows you to store, retrieve, update, and delete login credentials encrypted with a master password using modern cryptography. It provides both a command-line interface (CLI) for quick actions and a web interface for visual management.
 
 -----
 
