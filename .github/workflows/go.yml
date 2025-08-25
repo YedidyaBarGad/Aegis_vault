@@ -25,4 +25,4 @@ jobs:
           context: .
           file: .src/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/aegis-vault:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/aegis-vault:v1.0
