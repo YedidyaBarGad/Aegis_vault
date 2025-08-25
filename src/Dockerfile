@@ -34,10 +34,8 @@ WORKDIR /app
 # Copy the built binary from the `builder` stage.
 COPY --from=builder /app/main .
 
-# Copy the `templates` and `users_data` directories from the builder stage.
-# These directories contain the HTML files and user vault data.
+# Copy the templates directory from the builder stage.
 COPY --from=builder /app/templates ./templates
-COPY --from=builder /app/users_data ./users_data
 
 # Expose the port on which the application will listen.
 EXPOSE 8080
