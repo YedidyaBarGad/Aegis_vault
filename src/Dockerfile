@@ -6,13 +6,13 @@ WORKDIR /app
 
 # Copy the go.mod and go.sum files first to leverage Docker's cache.
 # If these files don't change, this layer won't be rebuilt.
-COPY ../go.mod ../go.sum ./
+COPY go.mod go.sum ./
 
 # Download all the dependencies.
 RUN go mod download
 
 # Copy the rest of the application's source code.
-COPY ../. .
+COPY . .
 
 # Set environment variables to disable Go modules' use of the browser
 # and to ensure the application runs in a non-interactive mode.
