@@ -3,10 +3,11 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
-	"os"
 	"time"
 
 	"golang.org/x/crypto/scrypt"
@@ -135,10 +136,8 @@ func Decrypt(encryptedData string, password []byte) ([]byte, error) {
 	return data, nil
 }
 
-func GetKeyBase64() ([]byte, error) {
-	keyBase64 := os.Getenv("USERS_FILE_ENCRYPTION_KEY")
-	if keyBase64 == "" {
-		return nil, fmt.Errorf("FATAL: Environment variable USERS_FILE_ENCRYPTION_KEY not set")
-	}
-	return []byte(keyBase64), nil
+func HashContent(content string) string {
+	hash := sha256.New()
+	hash.Write([]byte(content))
+	return hex.EncodeToString(hash.Sum(nil))
 }

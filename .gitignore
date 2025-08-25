@@ -7,3 +7,7 @@ vaults_CLI
 passman-cli
 passman-web
 users_data
+.env
+Aegis_vault.exe
+rsrc.syso
+myicon.ico

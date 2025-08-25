@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/YedidyaBarGad/go-passman/crypto"
 	"github.com/YedidyaBarGad/go-passman/models"
@@ -92,4 +93,9 @@ func DeleteVault(path string) error {
 		return fmt.Errorf("failed to delete vault file: %v", err)
 	}
 	return nil
+}
+
+// getVaultPath returns the path to a user's vault file
+func GetVaultPath(username, vaultDir string) string {
+	return filepath.Join(vaultDir, fmt.Sprintf("%s_vault.json", crypto.HashContent(username))[:10])
 }
