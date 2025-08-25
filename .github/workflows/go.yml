@@ -27,7 +27,7 @@ jobs:
         run: go mod tidy
 
       - name: Build application
-        run: go build -o go-passman-web .
+        run: go build -o Aegis_vault-web .
 
       - name: Run tests
         run: go test ./...
@@ -37,6 +37,6 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          files: go-passman-web
+          files: Aegis_vault-web
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

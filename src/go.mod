@@ -1,4 +1,4 @@
-module github.com/YedidyaBarGad/go-passman
+module github.com/YedidyaBarGad/Aegis_vault
 
 go 1.24
 

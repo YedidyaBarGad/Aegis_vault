@@ -6,9 +6,9 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/YedidyaBarGad/go-passman/models"
-	"github.com/YedidyaBarGad/go-passman/storage"
-	"github.com/YedidyaBarGad/go-passman/util"
+	"github.com/YedidyaBarGad/Aegis_vault/models"
+	"github.com/YedidyaBarGad/Aegis_vault/storage"
+	"github.com/YedidyaBarGad/Aegis_vault/util"
 	"golang.org/x/crypto/bcrypt"
 
 	"golang.org/x/term"

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/YedidyaBarGad/go-passman/crypto"
+	"github.com/YedidyaBarGad/Aegis_vault/crypto"
 )
 
 // User represents a user in the system.
@@ -38,7 +38,7 @@ func LoadUsers(filename string) (*Users, error) {
 		return nil, fmt.Errorf("error reading users file: %v", err)
 	}
 
-	// Decrypt the data after loading
+	//
 	var users Users
 	decreaptedData, err := crypto.Decrypt(string(data), []byte(key))
 	if err != nil {

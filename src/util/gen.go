@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/YedidyaBarGad/go-passman/models"
+	"github.com/YedidyaBarGad/Aegis_vault/models"
 )
 
 // GeneratePassword generates a random password with lowercase, uppercase, digits, and special characters.

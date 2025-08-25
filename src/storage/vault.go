@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/YedidyaBarGad/go-passman/crypto"
-	"github.com/YedidyaBarGad/go-passman/models"
+	"github.com/YedidyaBarGad/Aegis_vault/crypto"
+	"github.com/YedidyaBarGad/Aegis_vault/models"
 )
 
 // Serializes credentials to JSON, encrypts them with the master password, and writes to the vault file: vault.json.

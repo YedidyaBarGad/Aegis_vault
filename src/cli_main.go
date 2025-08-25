@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/YedidyaBarGad/go-passman/auth"
-	"github.com/YedidyaBarGad/go-passman/models"
-	"github.com/YedidyaBarGad/go-passman/storage"
-	"github.com/YedidyaBarGad/go-passman/util"
+	"github.com/YedidyaBarGad/Aegis_vault/auth"
+	"github.com/YedidyaBarGad/Aegis_vault/models"
+	"github.com/YedidyaBarGad/Aegis_vault/storage"
+	"github.com/YedidyaBarGad/Aegis_vault/util"
 )
 
 const vaultDir = "vaults_CLI"
@@ -140,7 +140,7 @@ func handlechangePW(creds []models.Credential, username string) error {
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: go-passman <username> <command>")
+		fmt.Println("Usage: Aegis_vault <username> <command>")
 		fmt.Println("Commands: init, add, get, delete, update, list")
 		return
 	}
