@@ -23,7 +23,7 @@
 
 ## 🎬 Demo
 
-![A brief demo of the Aegis Vault cli interface and its features.](https://gifyu.com/image/bNeDW)
+![A brief demo of the Aegis Vault cli interface and its features.](https://s14.gifyu.com/images/bNeDW.gif)
 
 -----
 
