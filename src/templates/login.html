@@ -3,98 +3,312 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login - Go Passman</title>
+  <title>Login - Aegis Vault</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
-
+  
   <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --bg-color: #f8fafc;
+      --container-bg: #ffffff;
+      --text-color: #1e293b;
+      --text-muted: #64748b;
+      --primary-color: #3b82f6;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --border-radius-lg: 16px;
+    }
+
+    body.dark-mode {
+      --bg-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+      --bg-color: #0f172a;
+      --container-bg: #1e293b;
+      --text-color: #f1f5f9;
+      --text-muted: #94a3b8;
+      --success-color: #34d399;
+      --danger-color: #f87171;
+    }
+
     body {
-      background-color: #f8f9fa;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-color);
       min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-color);
+      opacity: 0.95;
+      z-index: -1;
     }
 
     .card {
       max-width: 400px;
       width: 100%;
       padding: 2rem;
-      border: none;
-      border-radius: 1rem;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
-      background-color: #ffffff;
+      background: var(--container-bg);
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--shadow-xl);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary-color), var(--success-color), var(--warning-color));
+      border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
     }
 
     .card-title {
       font-size: 1.5rem;
       font-weight: 600;
-      color: #198754;
+      color: var(--success-color);
+      text-align: center;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
     }
 
-    .btn-success {
-      font-weight: 500;
-      font-size: 1rem;
+    .form-control {
+      border-radius: 10px;
+      border: 2px solid rgba(226, 232, 240, 0.5);
+      background: var(--container-bg);
+      color: var(--text-color);
+      padding: 0.75rem 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      border-color: var(--success-color);
+      box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
+      background: var(--container-bg);
+      color: var(--text-color);
+    }
+
+    body.dark-mode .form-control {
+      border-color: rgba(51, 65, 85, 0.8);
+      background: var(--container-bg);
+      color: var(--text-color);
+    }
+
+    body.dark-mode .form-control:focus {
+      border-color: var(--success-color);
+      background: var(--container-bg);
+      color: var(--text-color);
+    }
+
+    body.dark-mode .btn-outline-secondary {
+      border-color: rgba(51, 65, 85, 0.8);
+      color: var(--text-muted);
+    }
+
+    body.dark-mode .btn-outline-secondary:hover {
+      background: rgba(51, 65, 85, 0.3);
+      border-color: var(--text-muted);
+      color: var(--text-color);
     }
 
     .form-label {
       font-weight: 500;
+      color: var(--text-color);
     }
 
-    .bi {
-      vertical-align: -0.125em;
+    .btn {
+      border-radius: 10px;
+      font-weight: 500;
+      padding: 0.625rem 1.25rem;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
-    /* Optional: Style for messages/errors to match new design */
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success-color), #059669);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+      color: white;
+    }
+
+    .btn-outline-secondary {
+      background: transparent;
+      border: 2px solid rgba(226, 232, 240, 0.5);
+      color: var(--text-muted);
+    }
+
+    .btn-outline-secondary:hover {
+      background: rgba(248, 250, 252, 0.5);
+      border-color: var(--text-muted);
+      color: var(--text-color);
+    }
+
     .alert {
-      font-size: 0.9rem;
+      border-radius: 12px;
+      border: none;
+      margin-bottom: 1rem;
+    }
+
+    .alert-danger {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+      color: var(--danger-color);
+      border-left: 4px solid var(--danger-color);
+    }
+
+    .alert-success {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+      color: var(--success-color);
+      border-left: 4px solid var(--success-color);
+    }
+
+    .dark-toggle {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 1000;
+    }
+
+    .dark-toggle button {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1e293b;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dark-toggle button:hover {
+      background: rgba(255, 255, 255, 1);
+      transform: translateY(-1px);
+    }
+
+    body.dark-mode .dark-toggle button {
+      background: rgba(30, 41, 59, 0.9);
+      color: #f1f5f9;
+    }
+
+    body.dark-mode .dark-toggle button:hover {
+      background: rgba(30, 41, 59, 1);
+    }
+
+    body.dark-mode .btn-close {
+      filter: invert(1);
     }
   </style>
 </head>
 <body>
+  <div class="dark-toggle">
+    <button onclick="toggleDarkMode()" title="Toggle Dark Mode">
+      <i class="bi bi-moon-stars-fill"></i>
+    </button>
+  </div>
+
   <div class="card">
-    <div class="card-body">
-      <h2 class="card-title text-center mb-4">
-        <i class="bi bi-unlock-fill me-2"></i>Access Your Vault
-      </h2>
+    <h2 class="card-title">
+      <i class="bi bi-unlock-fill"></i>Access Your Vault
+    </h2>
 
-      {{if .Error}}
-      <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        {{.Error}}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
-      {{end}}
-
-      {{if .Message}}
-      <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{.Message}}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
-      {{end}}
-
-      <form method="POST" action="/login" autocomplete="off">
-        <div class="mb-3">
-          <label for="usernameInput" class="form-label">Username</label>
-          <input type="text" class="form-control" id="usernameInput" name="username" required autofocus placeholder="Enter your username"/>
-        </div>
-        <div class="mb-3">
-          <label for="passwordInput" class="form-label">Master Password</label>
-          <input type="password" class="form-control" id="passwordInput" name="password" required placeholder="Enter your master password"/>
-        </div>
-        <div class="d-grid gap-2">
-          <button type="submit" class="btn btn-success btn-lg">
-            <i class="bi bi-shield-lock-fill me-2"></i>Login
-          </button>
-          <a href="/register" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-person-plus-fill me-1"></i> Register New Account
-          </a>
-        </div>
-      </form>
+    {{if .Error}}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      {{.Error}}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+    {{end}}
+
+    {{if .Message}}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      {{.Message}}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {{end}}
+
+    <form method="POST" action="/login" autocomplete="off">
+      <div class="mb-3">
+        <label for="usernameInput" class="form-label">Username</label>
+        <input type="text" class="form-control" id="usernameInput" name="username" required autofocus placeholder="Enter your username"/>
+      </div>
+      <div class="mb-3">
+        <label for="passwordInput" class="form-label">Master Password</label>
+        <input type="password" class="form-control" id="passwordInput" name="password" required placeholder="Enter your master password"/>
+      </div>
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-success btn-lg">
+          <i class="bi bi-shield-lock-fill me-2"></i>Login
+        </button>
+        <a href="/register" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-person-plus-fill me-1"></i> Register New Account
+        </a>
+      </div>
+    </form>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Simple inline dark mode toggle
+    function toggleDarkMode() {
+      const body = document.body;
+      const isDark = body.classList.contains('dark-mode');
+      const button = document.querySelector('.dark-toggle button i');
+      
+      if (isDark) {
+        body.classList.remove('dark-mode');
+        button.className = 'bi bi-moon-stars-fill';
+        localStorage.setItem('theme', 'light');
+      } else {
+        body.classList.add('dark-mode');
+        button.className = 'bi bi-sun-fill';
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+
+    // Apply saved theme on load
+    document.addEventListener('DOMContentLoaded', function() {
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldUseDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+      
+      if (shouldUseDark) {
+        document.body.classList.add('dark-mode');
+        document.querySelector('.dark-toggle button i').className = 'bi bi-sun-fill';
+      }
+    });
+  </script>
 </body>
 </html>

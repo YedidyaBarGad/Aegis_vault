@@ -3,94 +3,153 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Register - Go Passman</title>
+    <title>Register - Aegis Vault</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.com/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
 
     <style>
         :root {
-            --bg-color: #f8f9fa;
-            --card-bg: #ffffff;
-            --text-color: #212529;
-            --primary-color: #198754; /* Bootstrap success green */
-            --input-border: #ced4da;
-            --shadow-color: rgba(0, 0, 0, 0.1);
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-color: #f8fafc;
+            --container-bg: #ffffff;
+            --text-color: #1e293b;
+            --text-muted: #64748b;
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --border-radius-lg: 16px;
         }
 
         body.dark-mode {
-            --bg-color: #1a1a1a;
-            --card-bg: #2a2a2a;
-            --text-color: #e0e0e0;
-            --primary-color: #28a745; /* Slightly adjusted green for dark mode readability */
-            --input-border: #444;
-            --shadow-color: rgba(0, 0, 0, 0.3);
+            --bg-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            --bg-color: #0f172a;
+            --container-bg: #1e293b;
+            --text-color: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success-color: #34d399;
+            --danger-color: #f87171;
         }
 
         body {
-            background-color: var(--bg-color);
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background: var(--bg-gradient);
             color: var(--text-color);
-            transition: background-color 0.3s, color 0.3s;
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-color);
+            opacity: 0.95;
+            z-index: -1;
         }
 
         .card {
-            max-width: 450px; /* Slightly wider for better spacing */
+            max-width: 450px;
             width: 100%;
-            padding: 2.5rem; /* Increased padding */
-            border: none;
-            border-radius: 1rem;
-            box-shadow: 0 8px 30px var(--shadow-color); /* More prominent shadow */
-            background-color: var(--card-bg);
-            transition: background-color 0.3s, box-shadow 0.3s;
+            padding: 2.5rem;
+            background: var(--container-bg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color), var(--warning-color));
+            border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
         }
 
         .card-title {
-            font-size: 2rem; /* Larger title */
-            font-weight: 700; /* Bolder */
+            font-size: 2rem;
+            font-weight: 700;
             color: var(--primary-color);
-            margin-bottom: 1.5rem; /* More space below title */
+            margin-bottom: 1.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .card-title .bi {
-            font-size: 1.8rem; /* Icon size relative to title */
-            margin-right: 0.5rem;
+            gap: 0.5rem;
         }
 
         .form-label {
-            font-weight: 600; /* Bolder labels */
+            font-weight: 600;
             color: var(--text-color);
             margin-bottom: 0.5rem;
         }
 
         .form-control {
-            border-color: var(--input-border);
-            background-color: var(--card-bg);
+            border-radius: 10px;
+            border: 2px solid rgba(226, 232, 240, 0.5);
+            background: var(--container-bg);
             color: var(--text-color);
-            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
         }
 
         .form-control:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); /* Green shadow for focus */
+            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+            background: var(--container-bg);
+            color: var(--text-color);
         }
 
-        .btn-primary, .btn-success {
+        body.dark-mode .form-control {
+            border-color: rgba(51, 65, 85, 0.8);
+            background: var(--container-bg);
+            color: var(--text-color);
+        }
+
+        body.dark-mode .form-control:focus {
+            border-color: var(--primary-color);
+            background: var(--container-bg);
+            color: var(--text-color);
+        }
+
+        .btn {
+            border-radius: 10px;
             font-weight: 600;
-            font-size: 1.1rem; /* Slightly larger buttons */
+            font-size: 1.1rem;
             padding: 0.75rem 1.5rem;
-            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, transform 0.1s ease-out;
+            border: none;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .btn-primary:hover, .btn-success:hover {
-            transform: translateY(-2px); /* Subtle hover effect */
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), #2563eb);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
         }
 
         .link-text {
@@ -106,7 +165,25 @@
 
         .link-primary:hover {
             text-decoration: underline;
-            color: var(--primary-color); /* Ensure hover color stays primary */
+            color: var(--primary-color);
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            margin-bottom: 1rem;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+            color: var(--danger-color);
+            border-left: 4px solid var(--danger-color);
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+            color: var(--success-color);
+            border-left: 4px solid var(--success-color);
         }
 
         .dark-toggle {
@@ -116,31 +193,43 @@
             z-index: 1000;
         }
 
-        /* Adjust alert styles for dark mode */
-        body.dark-mode .alert-danger,
-        body.dark-mode .alert-success {
-            color: #fff;
+        .dark-toggle button {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1e293b;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        body.dark-mode .alert-danger {
-            background-color: #6a1a21; /* Darker red */
-            border-color: #8c1f28;
+        .dark-toggle button:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-1px);
         }
 
-        body.dark-mode .alert-success {
-            background-color: #1a4f21; /* Darker green */
-            border-color: #206c2a;
+        body.dark-mode .dark-toggle button {
+            background: rgba(30, 41, 59, 0.9);
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .dark-toggle button:hover {
+            background: rgba(30, 41, 59, 1);
         }
 
         body.dark-mode .btn-close {
-            filter: invert(1); /* Makes the close button white in dark mode */
+            filter: invert(1);
         }
-        
-        /* New styles for password strength indicator */
+
         .password-strength-indicator {
             height: 5px;
             width: 100%;
-            background-color: #e9ecef;
+            background-color: rgba(233, 236, 239, 0.5);
             border-radius: 5px;
             margin-top: 0.5rem;
             position: relative;
@@ -154,152 +243,125 @@
         }
 
         .strength-weak .strength-bar {
-            background-color: #dc3545;
+            background-color: var(--danger-color);
             width: 33%;
         }
 
         .strength-strong .strength-bar {
-            background-color: #198754;
+            background-color: var(--success-color);
             width: 100%;
+        }
+
+        body.dark-mode .password-strength-indicator {
+            background-color: rgba(51, 65, 85, 0.5);
         }
     </style>
 </head>
 <body>
     <div class="dark-toggle">
-        <button id="darkModeToggle" class="btn btn-sm btn-outline-secondary" title="Toggle Dark Mode">
+        <button onclick="toggleDarkMode()" title="Toggle Dark Mode">
             <i class="bi bi-moon-stars-fill"></i>
         </button>
     </div>
 
     <div class="card">
-        <div class="card-body">
-            <h2 class="card-title text-center mb-4">
-                <i class="bi bi-person-plus-fill"></i>Register New Account
-            </h2>
+        <h2 class="card-title">
+            <i class="bi bi-person-plus-fill"></i>Register New Account
+        </h2>
 
-            {{if .Error}}
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    {{.Error}}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {{end}}
-            {{if .Message}}
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{.Message}}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {{end}}
+        {{if .Error}}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{.Error}}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {{end}}
+        {{if .Message}}
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{.Message}}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {{end}}
 
-            <form method="POST" action="/register" autocomplete="off">
-                <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" name="username" required autofocus placeholder="Choose a username"/>
-                </div>
+        <form method="POST" action="/register" autocomplete="off">
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" name="username" required autofocus placeholder="Choose a username"/>
+            </div>
 
-                <div class="mb-3">
-                    <label for="password" class="form-label">Master Password</label>
-                    <input type="password" class="form-control" id="password" name="password" required placeholder="Create a strong master password" oninput="checkPasswordStrength(this.value)"/>
-                    <!-- Password strength indicator bar -->
-                    <div id="password-strength-indicator" class="password-strength-indicator mt-2">
-                        <div class="strength-bar"></div>
-                    </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Master Password</label>
+                <input type="password" class="form-control" id="password" name="password" required placeholder="Create a strong master password" oninput="checkPasswordStrength()"/>
+                <div id="password-strength-indicator" class="password-strength-indicator mt-2">
+                    <div class="strength-bar"></div>
                 </div>
+            </div>
 
-                <div class="mb-4">
-                    <label for="confirm_password" class="form-label">Confirm Master Password</label>
-                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required placeholder="Re-enter your master password"/>
-                </div>
+            <div class="mb-4">
+                <label for="confirm_password" class="form-label">Confirm Master Password</label>
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required placeholder="Re-enter your master password"/>
+            </div>
 
-                <div class="d-grid gap-2 mb-3">
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="bi bi-person-check-fill me-2"></i>Register
-                    </button>
-                </div>
-            </form>
-            <p class="text-center link-text">Already have an account? <a href="/login" class="link-primary">Login here</a>.</p>
-        </div>
+            <div class="d-grid gap-2 mb-3">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-person-check-fill me-2"></i>Register
+                </button>
+            </div>
+        </form>
+        <p class="text-center link-text">Already have an account? <a href="/login" class="link-primary">Login here</a>.</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- Dark Mode Toggle ---
-            const darkModeToggle = document.getElementById('darkModeToggle');
-            const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
-
-            // Function to set dark mode
-            const setDarkMode = (isDark) => {
-                if (isDark) {
-                    document.body.classList.add('dark-mode');
-                    darkModeToggle.querySelector('i').classList.remove('bi-moon-stars-fill');
-                    darkModeToggle.querySelector('i').classList.add('bi-sun-fill');
-                    darkModeToggle.classList.remove('btn-outline-secondary');
-                    darkModeToggle.classList.add('btn-secondary');
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    document.body.classList.remove('dark-mode');
-                    darkModeToggle.querySelector('i').classList.remove('bi-sun-fill');
-                    darkModeToggle.querySelector('i').classList.add('bi-moon-stars-fill');
-                    darkModeToggle.classList.remove('btn-secondary');
-                    darkModeToggle.classList.add('btn-outline-secondary');
-                    localStorage.setItem('theme', 'light');
-                }
-            };
-
-            // Initial theme setting
-            const currentTheme = localStorage.getItem('theme');
-            if (currentTheme) {
-                setDarkMode(currentTheme === 'dark');
+        function toggleDarkMode() {
+            const body = document.body;
+            const isDark = body.classList.contains('dark-mode');
+            const button = document.querySelector('.dark-toggle button i');
+            
+            if (isDark) {
+                body.classList.remove('dark-mode');
+                button.className = 'bi bi-moon-stars-fill';
+                localStorage.setItem('theme', 'light');
             } else {
-                setDarkMode(prefersDarkScheme.matches); // Use system preference if no stored theme
+                body.classList.add('dark-mode');
+                button.className = 'bi bi-sun-fill';
+                localStorage.setItem('theme', 'dark');
             }
+        }
 
-            // Listen for system theme changes
-            prefersDarkScheme.addEventListener('change', (event) => {
-                if (!localStorage.getItem('theme')) { // Only update if no explicit user preference is set
-                    setDarkMode(event.matches);
-                }
-            });
-
-            // Toggle on button click
-            darkModeToggle.addEventListener('click', () => {
-                document.body.classList.toggle('dark-mode');
-                const isDarkMode = document.body.classList.contains('dark-mode');
-                setDarkMode(isDarkMode);
-            });
-
-            // --- Password Strength Check ---
-            const passwordInput = document.getElementById('password');
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
             const strengthIndicator = document.getElementById('password-strength-indicator');
+            let strengthClass = 'strength-weak';
 
-            function checkPasswordStrength() {
-                const password = passwordInput.value;
-                let strengthClass = 'strength-weak';
+            if (password.length > 0) {
+                const hasLower = /[a-z]/.test(password);
+                const hasUpper = /[A-Z]/.test(password);
+                const hasDigit = /\d/.test(password);
+                const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
 
-                if (password.length > 0) {
-                    const hasLower = /[a-z]/.test(password);
-                    const hasUpper = /[A-Z]/.test(password);
-                    const hasDigit = /\d/.test(password);
-                    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+                const isStrong = password.length >= 8 && hasLower && hasUpper && hasDigit && hasSpecial;
 
-                    const isStrong = password.length >= 8 && hasLower && hasUpper && hasDigit && hasSpecial;
-
-                    if (isStrong) {
-                        strengthClass = 'strength-strong';
-                    } else {
-                        strengthClass = 'strength-weak';
-                    }
+                if (isStrong) {
+                    strengthClass = 'strength-strong';
                 } else {
-                    strengthClass = '';
+                    strengthClass = 'strength-weak';
                 }
-
-                // Update the strength indicator
-                strengthIndicator.className = `password-strength-indicator mt-2 ${strengthClass}`;
+            } else {
+                strengthClass = '';
             }
 
-            // Listen for input on the password field
-            passwordInput.addEventListener('input', checkPasswordStrength);
+            strengthIndicator.className = `password-strength-indicator mt-2 ${strengthClass}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const shouldUseDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+            
+            if (shouldUseDark) {
+                document.body.classList.add('dark-mode');
+                document.querySelector('.dark-toggle button i').className = 'bi bi-sun-fill';
+            }
         });
     </script>
 </body>
