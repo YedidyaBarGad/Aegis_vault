@@ -1,19 +1,47 @@
 //go:build cli
-// +build cli
 
 package main
 
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/YedidyaBarGad/Aegis_vault/auth"
 	"github.com/YedidyaBarGad/Aegis_vault/models"
 	"github.com/YedidyaBarGad/Aegis_vault/storage"
 	"github.com/YedidyaBarGad/Aegis_vault/util"
+	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
-const vaultDir = "vaults_CLI"
+const usersDir = "users_data"
+const allUsersPath = "users_data/users.json"
+
+var allUsers *models.Users
+
+func init() {
+	// Ensure users data directory exists
+	if err := os.MkdirAll(usersDir, 0755); err != nil {
+		fmt.Printf("Failed to create users data directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Ensure .env file exists and load environment variables
+	util.EnsureEnvFileExists()
+	godotenv.Load()
+
+	// Load existing users or initialize empty users list
+	loadedUsers, err := models.LoadUsers(allUsersPath)
+	if err != nil || loadedUsers == nil {
+		allUsers = &models.Users{
+			Number: 0,
+			Users:  []models.User{},
+		}
+	} else {
+		allUsers = loadedUsers
+	}
+}
 
 // handleAdd prompts the user for site, username, and password, and adds a new credential
 func handleAdd(creds []models.Credential) ([]models.Credential, error) {
@@ -23,7 +51,7 @@ func handleAdd(creds []models.Credential) ([]models.Credential, error) {
 		return creds, fmt.Errorf("site and username cannot be empty")
 	}
 	if existcred := models.FindCredential(creds, site); existcred != nil {
-		return creds, fmt.Errorf("Credential for this site already exist")
+		return creds, fmt.Errorf("credential for this site already exists")
 	}
 	password, err := auth.ReadPasswordPrompt("Enter password (leave blank to generate a random one): ")
 	if err != nil {
@@ -31,7 +59,7 @@ func handleAdd(creds []models.Credential) ([]models.Credential, error) {
 	}
 	passwordStr := string(password)
 	if passwordStr == "" {
-		passwordStr = util.GeneratePassword(12)
+		passwordStr = util.GeneratePassword(16)
 		fmt.Println("Generated password:", passwordStr)
 		if !util.PromptYesNo("Use generated password?") {
 			return creds, fmt.Errorf("password generation cancelled")
@@ -111,44 +139,140 @@ func handleUpdate(creds []models.Credential) ([]models.Credential, error) {
 	return creds, nil
 }
 
-// handleInit initializes a new vault for the user
+// handleInit initializes a new vault for the user and saves user data.
 func handleInit(username string) ([]models.Credential, []byte, error) {
-	vaultPath := storage.GetVaultPath(vaultDir, username)
-
-	// Ensure the vault directory exists
-	if err := os.MkdirAll(vaultDir, 0700); err != nil {
-		return nil, nil, fmt.Errorf("failed to create vault directory: %v", err)
+	// Check if the username already exists.
+	if allUsers == nil {
+		allUsers = &models.Users{Number: 0, Users: []models.User{}}
+	}
+	if user, _ := models.FindUser(username, allUsers); user != nil {
+		return nil, nil, fmt.Errorf("username '%s' already exists", username)
 	}
 
-	fmt.Printf("Initializing vault for user '%s' at %s...\n", username, vaultPath)
-	password, err := auth.SetMasterPassword(true, vaultPath, nil) // Set master password for this specific vault path
+	// Prompt for password
+	password, err := auth.ReadPasswordPrompt("Enter new master password: ")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to set master password: %v", err)
+		return nil, nil, fmt.Errorf("error reading password: %v", err)
 	}
+
+	// Password strength check
+	if !util.PasswordStrength(string(password)) {
+		return nil, nil, fmt.Errorf("password must be at least 8 characters long and include uppercase, lowercase, a digit, and a special character")
+	}
+
+	// Confirm password
+	confirmPassword, err := auth.ReadPasswordPrompt("Confirm master password: ")
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading confirmation password: %v", err)
+	}
+	if string(password) != string(confirmPassword) {
+		return nil, nil, fmt.Errorf("passwords do not match")
+	}
+
+	// Hash the password for the users.json file
+	hashedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to hash password: %v", err)
+	}
+
+	// Get the vault path
+	userVaultFileName := storage.GetVaultPath(username, "")
+	userVaultPath := filepath.Join(usersDir, userVaultFileName)
+
+	// Initialize the vault file (it will be empty)
 	creds := []models.Credential{}
-	if err := storage.SaveVault(vaultPath, creds, []byte(password)); err != nil {
+	if err := storage.SaveVault(userVaultPath, creds, password); err != nil {
 		return nil, nil, fmt.Errorf("failed to initialize vault: %v", err)
 	}
-	fmt.Println("Vault initialized successfully.")
-	return creds, []byte(password), nil
+
+	// Add the user to the central users list
+	if err := models.AddUser(username, string(hashedPassword), userVaultFileName, allUsersPath, allUsers); err != nil {
+		// If adding the user fails, try to clean up the created vault file to avoid orphaned data.
+		os.Remove(userVaultPath)
+		return nil, nil, fmt.Errorf("failed to save new user: %v", err)
+	}
+
+	fmt.Printf("Vault initialized successfully for user '%s'.\n", username)
+	return creds, password, nil
 }
 
-func handlechangePW(creds []models.Credential, username string) error {
-	_, err := auth.SetMasterPassword(true, storage.GetVaultPath(vaultDir, username), creds)
-	return err
+// handleChangePW handles password changes for CLI users
+func handleChangePW(creds []models.Credential, username string) error {
+	// Prompt for old password
+	oldPassword, err := auth.ReadPasswordPrompt("Enter current master password: ")
+	if err != nil {
+		return fmt.Errorf("error reading current password: %v", err)
+	}
+
+	// Verify old password
+	if !auth.AuthenticateUser(username, string(oldPassword), allUsers) {
+		return fmt.Errorf("current password is incorrect")
+	}
+
+	// Prompt for new password
+	newPassword, err := auth.ReadPasswordPrompt("Enter new master password: ")
+	if err != nil {
+		return fmt.Errorf("error reading new password: %v", err)
+	}
+
+	// Password strength check
+	if !util.PasswordStrength(string(newPassword)) {
+		return fmt.Errorf("new password must be at least 8 characters long and include uppercase, lowercase, a digit, and a special character")
+	}
+
+	// Confirm new password
+	confirmPassword, err := auth.ReadPasswordPrompt("Confirm new master password: ")
+	if err != nil {
+		return fmt.Errorf("error reading confirmation password: %v", err)
+	}
+	if string(newPassword) != string(confirmPassword) {
+		return fmt.Errorf("new passwords do not match")
+	}
+
+	// Hash the new password
+	hashedPassword, err := bcrypt.GenerateFromPassword(newPassword, bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash new password: %v", err)
+	}
+
+	// Update user's password hash in users list
+	user, err := models.FindUser(username, allUsers)
+	if err != nil || user == nil {
+		return fmt.Errorf("user not found: %v", err)
+	}
+
+	// Update password hash in the users list
+	for i, u := range allUsers.Users {
+		if u.Username == username {
+			allUsers.Users[i].Password = string(hashedPassword)
+			break
+		}
+	}
+
+	// Save updated users list
+	if err := models.SaveUsers(allUsersPath, allUsers); err != nil {
+		return fmt.Errorf("failed to save updated user data: %v", err)
+	}
+
+	// Re-encrypt vault with new password
+	userVaultPath := filepath.Join(usersDir, user.VaultFileName)
+	if err := storage.SaveVault(userVaultPath, creds, newPassword); err != nil {
+		return fmt.Errorf("failed to re-encrypt vault with new password: %v", err)
+	}
+
+	fmt.Println("Master password changed successfully.")
+	return nil
 }
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: Aegis_vault <username> <command>")
-		fmt.Println("Commands: init, add, get, delete, update, list")
+		fmt.Println("Usage: <username> <command>")
+		fmt.Println("Commands: init, add, get, delete, update, list, setPW")
 		return
 	}
 
 	username := os.Args[1]
 	command := os.Args[2]
-
-	vaultPath := storage.GetVaultPath(vaultDir, username)
 
 	if command == "init" {
 		_, _, err := handleInit(username)
@@ -159,7 +283,24 @@ func main() {
 	}
 
 	// For all other commands, prompt for password and load vault
-	password := auth.PromptMasterPassword(false, vaultPath)
+	password := auth.PromptMasterPassword(false, storage.GetVaultPath(username, usersDir))
+
+	// Authenticate user
+	if !auth.AuthenticateUser(username, string(password), allUsers) {
+		fmt.Println("Authentication failed: Invalid username or password.")
+		return
+	}
+
+	// Load user data to get the vault path
+	user, err := models.FindUser(username, allUsers)
+	if err != nil || user == nil {
+		fmt.Println("User not found:", err)
+		return
+	}
+
+	vaultPath := filepath.Join(usersDir, user.VaultFileName)
+
+	// Load vault
 	creds, err := storage.LoadVault(vaultPath, password)
 	if err != nil {
 		fmt.Println("Error loading vault:", err)
@@ -179,9 +320,24 @@ func main() {
 	case "list":
 		util.PrintCredentials(creds)
 	case "setPW":
-		err = handlechangePW(creds, username)
+		err = handleChangePW(creds, username)
+		if err == nil {
+			// If password change was successful, we need to reload with new password
+			newPassword, readErr := auth.ReadPasswordPrompt("Re-enter new master password to continue: ")
+			if readErr != nil {
+				fmt.Println("Error reading new password:", readErr)
+				return
+			}
+			creds, err = storage.LoadVault(vaultPath, newPassword)
+			if err != nil {
+				fmt.Println("Error reloading vault with new password:", err)
+				return
+			}
+			password = newPassword
+		}
 	default:
 		fmt.Println("Unknown command:", command)
+		fmt.Println("Available commands: init, add, get, delete, update, list, setPW")
 		return
 	}
 
@@ -195,7 +351,7 @@ func main() {
 		if err := storage.SaveVault(vaultPath, creds, password); err != nil {
 			fmt.Println("Error saving vault:", err)
 		} else {
-			fmt.Println("Vault saved.")
+			fmt.Println("Vault saved successfully.")
 		}
 	}
 }

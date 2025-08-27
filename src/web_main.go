@@ -3,8 +3,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -85,7 +83,7 @@ func init() {
 	}
 
 	// Ensure .env file exists and load environment variables
-	ensureEnvFileExists()
+	util.EnsureEnvFileExists()
 	godotenv.Load()
 	secretKey := os.Getenv("JWT_SECRET_KEY")
 	if secretKey == "" {
@@ -624,52 +622,6 @@ func apiList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(creds); err != nil {
 		http.Error(w, "Failed to encode credentials", http.StatusInternalServerError)
-	}
-}
-
-// ensureEnvFile exists checks for the presence of a .env file.
-// If it does not exist, it creates one and populates it with a
-// cryptographically secure JWT_SECRET_KEY.
-func ensureEnvFileExists() {
-	// Define the name of the environment file.
-	envFileName := ".env"
-
-	// Check if the file already exists.
-	if _, err := os.Stat(envFileName); os.IsNotExist(err) {
-		// The file does not exist, so we will create it.
-		fmt.Printf("%s not found. Generating a new one...\n", envFileName)
-		jwtKey := make([]byte, 32)
-		_, err := rand.Read(jwtKey)
-		if err != nil {
-			log.Fatalf("Failed to generate random JWT key: %v", err)
-		}
-		encodedJwtKey := base64.URLEncoding.EncodeToString(jwtKey)
-
-		// Generate a separate, secure USERS_FILE_ENCRYPTION_KEY.
-		// This key is for symmetric encryption of the users.json file.
-		encryptionKey := make([]byte, 32)
-		_, err = rand.Read(encryptionKey)
-		if err != nil {
-			log.Fatalf("Failed to generate random encryption key: %v", err)
-		}
-		encodedEncryptionKey := base64.URLEncoding.EncodeToString(encryptionKey)
-
-		// Construct the content to be written to the file.
-		content := fmt.Sprintf("JWT_SECRET_KEY=%s\nUSERS_FILE_ENCRYPTION_KEY=%s\n", encodedJwtKey, encodedEncryptionKey)
-
-		// Write the content to the new .env file.
-		err = os.WriteFile(envFileName, []byte(content), 0600) // 0600 gives read/write permissions only to the owner.
-		if err != nil {
-			log.Fatalf("Failed to write to %s: %v", envFileName, err)
-		}
-
-		fmt.Printf("Successfully created %s with new JWT_SECRET_KEY and USERS_FILE_ENCRYPTION_KEY.\n", envFileName)
-	} else if err != nil {
-		// Handle other potential errors, like permissions issues.
-		log.Fatalf("Failed to check for %s: %v", envFileName, err)
-	} else {
-		// The file already exists.
-		fmt.Printf("%s already exists. Skipping creation.\n", envFileName)
 	}
 }
 

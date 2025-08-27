@@ -21,6 +21,12 @@
 
 -----
 
+## 🎬 Demo
+
+![A brief demo of the Aegis Vault cli interface and its features.](https://gifyu.com/image/bNeDW)
+
+-----
+
 ## 📦 Installation
 
 1.  **Clone the Repository:**

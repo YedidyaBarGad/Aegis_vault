@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"os"
@@ -101,4 +102,49 @@ func PasswordStrength(password string) bool {
 		return false
 	}
 	return false
+}
+
+// ensureEnvFileExists checks for the presence of a .env file.
+// If it does not exist, it creates one and populates it with a
+// cryptographically secure keys.
+func EnsureEnvFileExists() {
+	envFileName := ".env"
+
+	// Check if the file already exists.
+	if _, err := os.Stat(envFileName); os.IsNotExist(err) {
+		fmt.Printf("%s not found. Generating a new one...\n", envFileName)
+
+		// Generate JWT key
+		jwtKey := make([]byte, 32)
+		_, err := rand.Read(jwtKey)
+		if err != nil {
+			fmt.Printf("Failed to generate random JWT key: %v\n", err)
+			os.Exit(1)
+		}
+		encodedJwtKey := base64.URLEncoding.EncodeToString(jwtKey)
+
+		// Generate encryption key
+		encryptionKey := make([]byte, 32)
+		_, err = rand.Read(encryptionKey)
+		if err != nil {
+			fmt.Printf("Failed to generate random encryption key: %v\n", err)
+			os.Exit(1)
+		}
+		encodedEncryptionKey := base64.URLEncoding.EncodeToString(encryptionKey)
+
+		// Construct the content to be written to the file.
+		content := fmt.Sprintf("JWT_SECRET_KEY=%s\nUSERS_FILE_ENCRYPTION_KEY=%s\n", encodedJwtKey, encodedEncryptionKey)
+
+		// Write the content to the new .env file.
+		err = os.WriteFile(envFileName, []byte(content), 0600)
+		if err != nil {
+			fmt.Printf("Failed to write to %s: %v\n", envFileName, err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Successfully created %s with new keys.\n", envFileName)
+	} else if err != nil {
+		fmt.Printf("Failed to check for %s: %v\n", envFileName, err)
+		os.Exit(1)
+	}
 }

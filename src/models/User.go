@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -83,11 +82,9 @@ func FindUser(username string, allUsers *Users) (*User, error) {
 	}
 	for _, user := range allUsers.Users {
 		if strings.EqualFold(user.Username, username) {
-			log.Printf("User %s found", username)
 			return &user, nil
 		}
 	}
-	log.Printf("User %s,%s is not found", allUsers.Users, username)
 	return nil, nil
 }
 
