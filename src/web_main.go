@@ -28,7 +28,6 @@ import (
 )
 
 // Aegis Vault
-// usersDir is the directory where individual user vaults and the users.json file will be stored
 const usersDir = "users_data"
 const allUsersPath = "users_data/users.json"
 const jwtCookieName = "session_token"
@@ -66,7 +65,7 @@ type Session struct {
 func init() {
 	// Load HTML templates
 	templates = template.Must(template.ParseFiles(
-		filepath.Join("templates", "entry.html"), // Add this line
+		filepath.Join("templates", "entry.html"),
 		filepath.Join("templates", "login.html"),
 		filepath.Join("templates", "login.html"),
 		filepath.Join("templates", "register.html"),
@@ -187,12 +186,14 @@ func isAuthenticated(next http.Handler) http.Handler {
 			return
 		}
 
+		// Create a session object from claims
 		session := &Session{
 			Username:  claims.Username,
 			VaultPath: claims.VaultPath,
 			VaultPW:   []byte(claims.VaultPW),
 		}
 
+		// Load user credentials from vault
 		loadedCreds, err := storage.LoadVault(session.VaultPath, session.VaultPW)
 		if err != nil {
 			log.Printf("Failed to load vault for user %s: %v", session.Username, err)
@@ -251,6 +252,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 		confirmPassword := r.FormValue("confirm_password")
 
+		// Validate input
 		if username == "" || password == "" || confirmPassword == "" {
 			renderTemplate(w, "register", PageData{Error: "All fields are required."})
 			return
@@ -270,12 +272,14 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			allUsers = &models.Users{Number: 0, Users: []models.User{}}
 		}
 
+		// Check for username uniqueness
 		if user, err := models.FindUser(username, allUsers); user != nil || err != nil {
 			log.Printf("Username conflict for %s: user=%v, err=%v", username, user, err)
 			renderTemplate(w, "register", PageData{Error: "Username already exists."})
 			return
 		}
 
+		// Hash the password
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
 			log.Printf("Error hashing password for user %s: %v", username, err)
@@ -283,15 +287,18 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Initialize user vault
 		userVaultFileName := storage.GetVaultPath(username, "")
 		userVaultPath := filepath.Join(usersDir, userVaultFileName)
 
+		// Create an empty vault for the new user
 		if err := storage.SaveVault(userVaultPath, []models.Credential{}, []byte(password)); err != nil {
 			log.Printf("Error initializing vault for new user %s: %v", username, err)
 			renderTemplate(w, "register", PageData{Error: "Failed to initialize user vault. Please try again."})
 			return
 		}
 
+		// Add user to users list and save
 		if err := models.AddUser(username, string(hashedPassword), userVaultFileName, allUsersPath, allUsers); err != nil {
 			log.Printf("Error saving new user %s: %v", username, err)
 			renderTemplate(w, "register", PageData{Error: "Failed to save user data."})
@@ -319,12 +326,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Authenticate user credentials
 		if !auth.AuthenticateUser(username, password, allUsers) {
 			log.Printf("Authentication failed for user %s", username)
 			renderTemplate(w, "login", PageData{Error: "Invalid username or password."})
 			return
 		}
 
+		// Verify vault can be decrypted with provided password
 		userVaultPath := filepath.Join(usersDir, user.VaultFileName)
 		_, errLoad := storage.LoadVault(userVaultPath, []byte(password))
 		if errLoad != nil {
@@ -356,6 +365,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle GET request - show login form
 	data := PageData{}
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		data.Error = errMsg
@@ -391,6 +401,7 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login?error="+url.QueryEscape("Failed to load vault. Please re-login."), http.StatusSeeOther)
 		return
 	}
+	// Render dashboard with credentials
 	data := PageData{Credentials: creds}
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		data.Error = errMsg
@@ -405,6 +416,7 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 func addHandler(w http.ResponseWriter, r *http.Request) {
 	session := getSessionFromRequest(r)
 
+	// Handle form submission
 	if r.Method == http.MethodPost {
 		r.ParseForm()
 		site := r.FormValue("site")
@@ -420,6 +432,7 @@ func addHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Load existing credentials to check for duplicates
 		creds, err := storage.LoadVault(session.VaultPath, session.VaultPW)
 		if err != nil {
 			log.Printf("Add handler failed to load vault for user %s: %v", session.Username, err)
@@ -427,6 +440,7 @@ func addHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Check for duplicate site
 		for _, existingCred := range creds {
 			if strings.EqualFold(existingCred.Site, site) {
 				data := PageData{
@@ -442,6 +456,7 @@ func addHandler(w http.ResponseWriter, r *http.Request) {
 			password = util.GeneratePassword(16)
 		}
 
+		// Add the new credential
 		newCred := models.Credential{
 			Site:     site,
 			Username: username,
@@ -450,6 +465,7 @@ func addHandler(w http.ResponseWriter, r *http.Request) {
 
 		creds = append(creds, newCred)
 
+		// Save the updated credentials
 		if err := storage.SaveVault(session.VaultPath, creds, session.VaultPW); err != nil {
 			log.Printf("Error saving vault after add for user %s: %v", session.Username, err)
 			renderTemplate(w, "add", PageData{Credential: &newCred, Error: "Failed to save vault."})
@@ -472,18 +488,21 @@ func confirmDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Load current credentials
 	creds, err := storage.LoadVault(session.VaultPath, session.VaultPW)
 	if err != nil {
 		http.Redirect(w, r, "/login?error="+url.QueryEscape("Failed to load vault. Please re-login."), http.StatusSeeOther)
 		return
 	}
 
+	// Find the credential to confirm deletion
 	cred := models.FindCredential(creds, siteToConfirm)
 	if cred == nil {
 		http.Error(w, "Credential not found for confirmation.", http.StatusNotFound)
 		return
 	}
 
+	// Render confirmation page
 	data := PageData{Credential: cred}
 	renderTemplate(w, "confirm_delete", data)
 }
@@ -496,6 +515,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse form to get the site to delete
 	r.ParseForm()
 	siteToDelete := r.FormValue("site")
 	if siteToDelete == "" {
@@ -503,12 +523,14 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Load current credentials
 	creds, err := storage.LoadVault(session.VaultPath, session.VaultPW)
 	if err != nil {
 		http.Redirect(w, r, "/login?error="+url.QueryEscape("Failed to load vault. Please re-login."), http.StatusSeeOther)
 		return
 	}
 
+	// Attempt to delete the credential
 	var deleted bool
 	creds, deleted = models.DeleteCredential(creds, siteToDelete)
 	if !deleted {
@@ -516,6 +538,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Save the updated credentials
 	if err := storage.SaveVault(session.VaultPath, creds, session.VaultPW); err != nil {
 		log.Printf("Error saving vault after deletion for user %s: %v", session.Username, err)
 		http.Redirect(w, r, "/dashboard?error="+url.QueryEscape("Failed to save vault after deletion."), http.StatusSeeOther)
