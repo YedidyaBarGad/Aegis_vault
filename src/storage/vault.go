@@ -86,5 +86,5 @@ func FileExists(path string) bool {
 
 // getVaultPath returns the path to a user's vault file
 func GetVaultPath(username, vaultDir string) string {
-	return filepath.Join(vaultDir, fmt.Sprintf("%s_vault.json", crypto.HashContent(username))[:10])
+	return filepath.Join(vaultDir, fmt.Sprintf("%s_vault.json", crypto.HashContent(username)[:10]))
 }
