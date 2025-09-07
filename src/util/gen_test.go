@@ -78,15 +78,3 @@ func TestEnsureEnvFileExists(t *testing.T) {
 	}
 	os.Remove(envFileName)
 }
-
-func TestPromptInput(t *testing.T) {
-	// This function is difficult to test in an automated way because it requires user input.
-	// We will skip testing it directly.
-	t.Skip("Skipping test for PromptInput as it requires interactive user input")
-}
-
-func TestPromptYesNo(t *testing.T) {
-	// This function is difficult to test in an automated way because it requires user input.
-	// We will skip testing it directly.
-	t.Skip("Skipping test for PromptYesNo as it requires interactive user input")
-}

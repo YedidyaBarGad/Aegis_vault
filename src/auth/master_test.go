@@ -73,15 +73,3 @@ func TestAuthenticateUser(t *testing.T) {
 		t.Error("AuthenticateUser with invalid username should have failed, but it didn't")
 	}
 }
-
-func TestReadPasswordPrompt(t *testing.T) {
-	// This function is difficult to test in an automated way because it requires user input.
-	// We will skip testing it directly.
-	t.Skip("Skipping test for ReadPasswordPrompt as it requires interactive user input")
-}
-
-func TestPromptMasterPassword(t *testing.T) {
-	// This function is difficult to test in an automated way because it requires user input.
-	// We will skip testing it directly.
-	t.Skip("Skipping test for PromptMasterPassword as it requires interactive user input")
-}

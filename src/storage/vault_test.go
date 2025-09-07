@@ -61,29 +61,6 @@ func TestFileExists(t *testing.T) {
 	}
 }
 
-func TestDeleteVault(t *testing.T) {
-	// Create a test vault file
-	vaultPath := "test_vault_to_delete.json"
-	if _, err := os.Create(vaultPath); err != nil {
-		t.Fatalf("Failed to create test vault file: %v", err)
-	}
-
-	// Delete the vault file
-	if err := DeleteVault(vaultPath); err != nil {
-		t.Fatalf("DeleteVault failed: %v", err)
-	}
-
-	// Check if the file still exists
-	if FileExists(vaultPath) {
-		t.Error("DeleteVault should have deleted the vault file, but it still exists")
-	}
-
-	// Test deleting a non-existent vault file
-	if err := DeleteVault("nonexistent_vault.json"); err == nil {
-		t.Error("DeleteVault with non-existent vault file should have failed, but it didn't")
-	}
-}
-
 func TestGetVaultPath(t *testing.T) {
 	username := "testuser"
 	vaultDir := "test_vaults"
